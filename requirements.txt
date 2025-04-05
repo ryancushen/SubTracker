@@ -12,9 +12,12 @@ six==1.17.0               # Python 2/3 compatibility library, required by python
 python-dateutil==2.9.0.post0  # Extensions to the standard datetime module for handling complex date operations
 
 # === GUI Framework ===
-PyQt6==6.7.0              # Python bindings for the Qt6 framework, used for the graphical user interface
-PyQt6-Qt6==6.7.3          # Qt6 libraries bundled with PyQt6
-PyQt6_sip==13.10.0        # SIP module for PyQt6, handles C++/Python communication
+streamlit==1.32.2      # Streamlit for web-based GUI
+# pysimplegui==4.60.5     # Simplified GUI Wrapper - Removed
+# kivy                    # Kivy Framework - Removed
+# kivy_deps.sdl2        # SDL2 dependency - Removed
+# kivy_deps.glew        # GLEW dependency - Removed
+# tkcalendar              # Optional: Uncomment if calendar widget is needed
 
 # === TUI Framework ===
 textual==3.0.1            # Modern TUI (Text User Interface) framework for terminal applications
@@ -28,3 +31,5 @@ mdit-py-plugins==0.4.2    # Plugins for markdown-it-py, enhances markdown capabi
 linkify-it-py==2.0.3      # Library for finding links in plain text, used by Textual for link handling
 mdurl==0.1.2              # URL utilities for markdown-it, used by Textual
 uc-micro-py==1.0.3        # Micro subset of Unicode data files for linkify-it-py
+
+streamlit-calendar # Component for displaying interactive calendars

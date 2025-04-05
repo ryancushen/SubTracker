@@ -5,8 +5,8 @@ from datetime import date, timedelta
 from typing import Dict, Any
 
 from src.models.subscription import Subscription, BillingCycle, SubscriptionStatus
-from services.SubscriptionService import SubscriptionService, DEFAULT_DATA_PATH, DEFAULT_SETTINGS_PATH, SubscriptionEncoder, subscription_decoder
-from utils.DateUtils import calculate_next_renewal_date
+from src.services.subscription_service import SubscriptionService, DEFAULT_DATA_PATH, DEFAULT_SETTINGS_PATH, SubscriptionEncoder, subscription_decoder
+from src.utils.date_utils import calculate_next_renewal_date
 
 # Sample Data
 SAMPLE_SUB_1 = Subscription(
@@ -17,9 +17,9 @@ SAMPLE_SUB_1 = Subscription(
     billing_cycle=BillingCycle.MONTHLY,
     start_date=date(2024, 1, 15),
     category="Entertainment",
+    notes="Standard plan",
     status=SubscriptionStatus.ACTIVE
 )
-# Expected next renewal after adding: 2024-02-15
 
 SAMPLE_SUB_2 = Subscription(
     id="sub2",
@@ -161,7 +161,7 @@ def test_init_corrupt_data_file(temp_data_path, temp_settings_path):
 
 def test_init_invalid_subscription_data(temp_data_path, temp_settings_path, capfd):
     """Test loading data with one invalid subscription entry."""
-    valid_entry = SAMPLE_SUB_1.__dict__.copy()
+    valid_entry = SAMPLE_SUB_1.__dict__.copy() # type: ignore
     valid_entry['next_renewal_date'] = date(2024, 2, 15)
     invalid_entry = {
         "id": "invalid_sub",
@@ -235,7 +235,7 @@ def test_update_data_path_setting(temp_data_path, temp_settings_path, temp_data_
 def test_add_subscription_valid(empty_service, temp_data_path):
     """Test adding a valid subscription."""
     service = empty_service
-    sub_to_add = SAMPLE_SUB_1
+    sub_to_add = SAMPLE_SUB_1 # type: ignore
     service.add_subscription(sub_to_add)
 
     # Check in memory
@@ -355,7 +355,7 @@ def test_get_subscription_exists(populated_service):
     sub = populated_service.get_subscription("sub1")
     assert sub is not None
     assert sub.id == "sub1"
-    assert sub.name == SAMPLE_SUB_1.name
+    assert sub.name == SAMPLE_SUB_1.name # type: ignore
 
 def test_get_subscription_not_exists(populated_service):
     """Test getting a non-existent subscription."""
@@ -375,9 +375,8 @@ def test_get_all_subscriptions_populated(populated_service):
     assert "sub2" in sub_ids
 
 # --- More tests needed for update, delete, edge cases in loading/saving ---
-# TODO: Add tests for update_subscription
-# TODO: Add tests for delete_subscription
-# TODO: Add tests for recalculate_all_renewal_dates on load scenarios
+# Update and delete subscription tests have been implemented below
+# Recalculation tests have been implemented in the "Test Recalculation on Load" section
 
 
 # --- Test Update Operations ---
@@ -651,8 +650,8 @@ def test_update_subscription_remove_trial_date(populated_service, temp_data_path
     assert "Info: Status auto-updated to ACTIVE" in captured.out
 
 
-# TODO: Add tests for delete_subscription
-# TODO: Add tests for recalculate_all_renewal_dates on load scenarios
+# Tests for delete_subscription implemented above
+# Tests for recalculate_all_renewal_dates implemented in the "Test Recalculation on Load" section
 
 
 # --- Test Delete Operations ---
@@ -697,7 +696,7 @@ def test_delete_subscription_not_found(populated_service, temp_data_path):
     assert len(data_from_file) == initial_subs_count
 
 
-# TODO: Add tests for recalculate_all_renewal_dates on load scenarios
+# Tests for recalculate_all_renewal_dates implemented in the "Test Recalculation on Load" section
 
 
 # --- Test Recalculation on Load ---

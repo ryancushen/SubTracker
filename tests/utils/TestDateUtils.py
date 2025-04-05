@@ -1,11 +1,19 @@
+"""
+Tests for the Date Utils module
+
+This module contains tests for the date utility functions used
+in the subscription management system.
+"""
+
 import pytest
-from datetime import date
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from unittest.mock import patch
 
 # Assuming BillingCycle is accessible via this relative path
 # Adjust if your structure is different or use absolute imports if configured
 from src.models.subscription import BillingCycle
-from utils.DateUtils import calculate_next_renewal_date
+from src.utils.date_utils import calculate_next_renewal_date
 
 # --- Test Data ---
 # Using a fixed date for 'today' in tests for consistent results
@@ -120,5 +128,115 @@ def test_calculate_next_renewal_date_unknown_cycle(mock_date):
         # Simulate an invalid enum value reaching the function
         calculate_next_renewal_date(start, "invalid_cycle_value") # type: ignore
     assert "Unknown billing cycle: invalid_cycle_value" in str(excinfo.value)
+
+# --- Test Next Renewal Date Calculation ---
+
+def test_calculate_monthly_renewal():
+    """Test calculating monthly renewal from a start date."""
+    today = date.today()
+
+    # Test when start_date is in the past
+    past_start = today - timedelta(days=40)  # Over a month ago
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.MONTHLY)
+
+    # Expected: Should be the next occurrence of the same day, after today
+    expected = past_start + relativedelta(months=2)  # Two months ahead of start
+    assert renewal == expected
+    assert renewal > today  # Must be in the future
+
+    # Test when start_date is today
+    renewal = calculate_next_renewal_date(today, BillingCycle.MONTHLY)
+    expected = today + relativedelta(months=1)
+    assert renewal == expected
+
+    # Test when using last_renewal parameter
+    last_renewal = today - timedelta(days=10)  # Recent renewal
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.MONTHLY, last_renewal=last_renewal)
+    expected = last_renewal + relativedelta(months=1)
+    assert renewal == expected
+
+
+def test_calculate_yearly_renewal():
+    """Test calculating yearly renewal dates."""
+    today = date.today()
+
+    # Test for date in prior year
+    past_start = today.replace(year=today.year - 2)  # Two years ago
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.YEARLY)
+
+    # Should be this year or next year depending on month/day
+    if (past_start.month, past_start.day) < (today.month, today.day):
+        # If the anniversary has passed this year, it should be next year
+        expected = past_start.replace(year=today.year + 1)
+    else:
+        # If the anniversary is still to come this year
+        expected = past_start.replace(year=today.year)
+
+    assert renewal == expected
+    assert renewal > today  # Must be in the future
+
+
+def test_calculate_quarterly_renewal():
+    """Test calculating quarterly renewal dates."""
+    today = date.today()
+
+    # Start date from 7 months ago
+    past_start = today - relativedelta(months=7)
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.QUARTERLY)
+
+    # Should be 3 months after the most recent quarter mark from start
+    # This means it's either 2 quarters (6 months) or 3 quarters (9 months) from start
+    quarters_passed = 7 // 3  # Integer division to get complete quarters
+    # Expected is start date + (quarters_passed + 1) * 3 months
+    expected = past_start + relativedelta(months=(quarters_passed + 1) * 3)
+    assert renewal == expected
+    assert renewal > today
+
+
+def test_calculate_weekly_renewal():
+    """Test calculating weekly renewal dates."""
+    today = date.today()
+
+    # Start date from 20 days ago (about 3 weeks)
+    past_start = today - timedelta(days=20)
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.WEEKLY)
+
+    # Calculate expected: start + 3 weeks (which is now past) + 1 more week
+    weeks_passed = 20 // 7  # Integer division to get complete weeks
+    expected = past_start + timedelta(days=(weeks_passed + 1) * 7)
+    assert renewal == expected
+    assert renewal > today
+
+
+def test_calculate_bi_annually_renewal():
+    """Test calculating bi-annual (every 2 years) renewal dates."""
+    today = date.today()
+
+    # Start date from 3 years ago
+    past_start = today.replace(year=today.year - 3)
+    renewal = calculate_next_renewal_date(past_start, BillingCycle.BI_ANNUALLY)
+
+    # Calculate expected: start + 4 years (2 bi-annual periods)
+    expected = past_start.replace(year=past_start.year + 4)
+    assert renewal == expected
+    assert renewal > today
+
+
+def test_calculate_other_cycle_fails():
+    """Test that attempting to calculate 'OTHER' cycle renewal raises an error."""
+    with pytest.raises(ValueError, match="Cannot automatically calculate next renewal date for 'OTHER' billing cycle"):
+        calculate_next_renewal_date(date.today(), BillingCycle.OTHER)
+
+
+def test_calculate_with_future_start_date():
+    """Test calculating renewal when start date is in the future."""
+    today = date.today()
+    future_start = today + timedelta(days=30)  # 30 days in the future
+
+    renewal = calculate_next_renewal_date(future_start, BillingCycle.MONTHLY)
+    expected = future_start + relativedelta(months=1)
+
+    assert renewal == expected
+    assert renewal > future_start > today
 
 

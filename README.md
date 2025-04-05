@@ -14,7 +14,7 @@ SubTracker is designed to help you take control of your subscriptions by providi
 
 ## Features
 
-- **Dual Interfaces**: Choose between a graphical user interface (GUI) built with PyQt6 or a text-based user interface (TUI) built with Textual
+- **Dual Interfaces**: Choose between a web-based graphical user interface (GUI) built with Streamlit or a text-based user interface (TUI) built with Textual
 - **Subscription Management**: Add, view, edit, and delete subscriptions with detailed information
 - **Financial Tracking**: Monitor monthly/yearly costs, view spending by category, and set budgets
 - **Renewal Notifications**: See upcoming renewals in a calendar view
@@ -70,10 +70,11 @@ This will present a menu where you can choose between:
 
 The graphical interface provides a user-friendly experience with:
 
-- Dashboard overview of subscription costs and upcoming renewals
-- List view with all subscription details
-- Form-based editors for adding and modifying subscriptions
-- Visual charts for spending analysis
+- Web-based interface powered by Streamlit
+- Interactive dashboard for monitoring your subscriptions
+- Visual calendar showing upcoming renewal dates
+- Budget tracking and alerts
+- Subscription management forms with smart validation
 
 ### TUI Interface
 
@@ -117,3 +118,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - PyQt6 for the GUI framework
 - Textual for the TUI framework
 - All contributors who have helped shape this project
+
+## Dependencies
+
+- Python 3.9+
+- Textual for the TUI framework
+- Streamlit for the GUI framework

@@ -1,5 +1,7 @@
 # src/tui/components/CustomCalendarView.py
 import calendar
+import time
+import random
 from datetime import date, timedelta
 from typing import Set, Optional # Added Optional
 
@@ -156,12 +158,16 @@ class CustomCalendarView(Widget):
         if self._calendar_grid is not None:
             self._calendar_grid.remove_children()
 
+        # Generate a unique timestamp for this build to ensure IDs don't conflict
+        unique_build_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        self.log(f"Calendar build ID: {unique_build_id}")
+
         # Populate the grid directly (synchronously) now that IDs are unique
         self.log("Populating calendar grid synchronously...")
 
         # Add Day Labels (Mo, Tu, ...) to the existing grid using Label widget
-        for day_label in self._day_labels:
-             label_widget = Label(day_label, classes="day-label")
+        for day_idx, day_label in enumerate(self._day_labels):
+             label_widget = Label(day_label, classes="day-label", id=f"label-{day_idx}-{unique_build_id}")
              label_widget.styles.column_span = 1
              self._calendar_grid.mount(label_widget)
 
@@ -173,12 +179,14 @@ class CustomCalendarView(Widget):
         for week_idx, week in enumerate(cal):
             for day_idx, day_num in enumerate(week):
                 if day_num == 0:
-                    # Use unique ID including year/month
-                    cell = Static("", classes="day-cell empty", id=f"empty-{self.current_year}-{self.current_month}-w{week_idx}-d{day_idx}")
+                    # Use unique ID including year/month and a unique timestamp
+                    cell = Static("", classes="day-cell empty",
+                                 id=f"empty-{week_idx}-{day_idx}-{unique_build_id}")
                 else:
                     cell_date = date(self.current_year, self.current_month, day_num)
-                    # Use unique ID including year/month
-                    cell = Static(str(day_num), classes="day-cell", id=f"day-{self.current_year}-{self.current_month}-{cell_date.isoformat()}")
+                    # Use unique ID including build timestamp to avoid conflicts
+                    cell = Static(str(day_num), classes="day-cell",
+                                 id=f"day-{cell_date.isoformat()}-{unique_build_id}")
                     cell.set_class(cell_date == today, "today")
                     cell.set_class(cell_date in self.highlighted_dates, "highlighted")
 
@@ -232,31 +240,24 @@ class CustomCalendarView(Widget):
                 self.log(f"Clicked Static widget ID: {widget_id}")
 
                 # Check if the ID matches our day cell pattern (updated)
-                if widget_id and widget_id.startswith(f"day-{self.current_year}-{self.current_month}-"):
-                    # Extract date from ID (updated)
-                    prefix = f"day-{self.current_year}-{self.current_month}-"
-                    date_str = widget_id[len(prefix):] # Get the part after the dynamic prefix
-                    selected_date = date.fromisoformat(date_str)
-                    self.log(f"Confirmed click on day cell: {selected_date}")
-                    # Post the custom message
-                    self.post_message(self.DateSelected(selected_date))
-                    event.stop() # Stop the event from propagating further
-                elif widget_id and widget_id.startswith(f"empty-{self.current_year}-{self.current_month}-"):
-                     self.log("Clicked on an empty day cell placeholder.")
-                     event.stop()
-                else:
-                    self.log(f"Clicked Static widget, but ID '{widget_id}' doesn't match day pattern.")
-            elif clicked_widget is self:
-                 self.log("Click occurred on the CustomCalendarView background itself.")
-            elif clicked_widget and clicked_widget.id == "calendar-grid":
-                 self.log("Click occurred on the calendar grid container.")
-            else:
-                # Log if the widget wasn't a Static instance or was None
-                self.log("Click did not hit a recognizable Static day cell.")
-
+                if widget_id and widget_id.startswith("day-"):
+                    # Extract date from ID (based on the ISO date in the middle)
+                    parts = widget_id.split('-')
+                    if len(parts) >= 4:  # Should have at least "day-YYYY-MM-DD-uniqueid"
+                        try:
+                            # Reconstruct the ISO date part (YYYY-MM-DD)
+                            date_str = '-'.join(parts[1:4])
+                            selected_date = date.fromisoformat(date_str)
+                            self.log(f"Confirmed click on day cell: {selected_date}")
+                            # Post the custom message
+                            self.post_message(self.DateSelected(selected_date))
+                            event.stop() # Stop the event from propagating further
+                        except ValueError as e:
+                            self.log.error(f"Error parsing date from ID: {e}")
+                    else:
+                        self.log.warning(f"Day cell ID doesn't match expected format: {widget_id}")
         except Exception as e:
-            # Catch potential errors during widget lookup or date parsing
-            self.log.error(f"Error processing click event at ({event.x}, {event.y}): {e}", exc_info=True)
+            self.log.error(f"Error handling calendar click: {e}")
 
     # --- Public method to update highlights ---
     def set_highlighted_dates(self, dates: Set[date]) -> None:

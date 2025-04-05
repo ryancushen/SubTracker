@@ -54,9 +54,8 @@ The application is organized into distinct layers to separate concerns and promo
   * `models/`: Defines the structure of the data (e.g., `Subscription` class).
   * `services/`: Handles business logic, data storage operations (primarily `SubscriptionService`).
   * `utils/`: Holds common helper functions (e.g., date calculations).
-  * `gui/`: Contains the code for the graphical user interface built with PyQt6.
-    * `components/`: Reusable visual building blocks.
-    * `screens/`: The main windows or pages of the GUI application.
+  * `gui/`:
+    * `streamlit_app.py`: Contains the code for the graphical user interface built with Streamlit.
   * `tui/`: Contains the code for the text-based user interface built with Textual.
     * `components/`: Custom widgets for the TUI.
     * `screens/`: Screen layouts for the TUI application.
@@ -162,10 +161,9 @@ graph TB
         Main["main.py<br>(Entry Point)"]
     end
 
-    subgraph "GUI Components"
-        GUIApp["app.py<br>(QApplication)"]
-        MainWindow["MainWindow<br>(QMainWindow)"]
-        MainScreen["MainScreen<br>(QWidget)"]
+    subgraph "GUI (Streamlit)"
+        StreamlitApp["streamlit_app.py<br>(Streamlit Script)"]
+        # Add specific Streamlit widgets used later
     end
 
     subgraph "TUI Components"
@@ -179,12 +177,10 @@ graph TB
         SS["SubscriptionService"]
     end
 
-    Main -->|User selects GUI| GUIApp
+    Main -->|User runs Streamlit| StreamlitApp
     Main -->|User selects TUI| TUIApp
 
-    GUIApp --> MainWindow
-    MainWindow --> MainScreen
-    MainScreen --> SS
+    StreamlitApp --> SS
 
     TUIApp --> TUIScreen
     TUIScreen --> TUIDialogs
@@ -193,14 +189,14 @@ graph TB
 ```
 
 ### 5.2 GUI (Graphical User Interface)
-- Built using PyQt6 (Qt framework bindings for Python)
-- Implemented with a clear separation of screens and components
-- Provides a main window with subscription management capabilities
-- Features:
-  - List view of all subscriptions
-  - Form-based add/edit functionality
-  - Financial summary display
-  - Calendar view for upcoming renewals
+- Built using Streamlit, a framework for rapidly building interactive web applications with Python.
+- The GUI is contained within `src/gui/streamlit_app.py`.
+- Features (to be implemented):
+  - Dataframe view of all subscriptions (`st.dataframe`).
+  - Form-based add/edit functionality (`st.form`, `st.sidebar`).
+  - Financial summary display (`st.metric`, `st.write`).
+  - Upcoming renewals display (`st.write`, potentially `st.expander`).
+  - Interaction managed via Streamlit's execution model and `st.session_state`.
 
 ### 5.3 TUI (Text-based User Interface)
 - Built using Textual, a modern TUI framework
@@ -236,18 +232,12 @@ graph TB
    - Handles date calculations for subscription renewals
    - Uses `python-dateutil` for handling complex date arithmetic
 
-### 6.2 GUI Components
+### 6.2 GUI Components (Streamlit)
 
-1. **Main Application (`src/gui/app.py`):**
-   - Sets up PyQt6 application and main window
-   - Configures menus and status bar
-   - Instantiates the main screen
-
-2. **Main Screen (`src/gui/screens/MainScreen.py`):**
-   - Provides the central user interface
-   - Displays the list of subscriptions
-   - Contains controls for adding, editing, and deleting subscriptions
-   - Shows financial summaries and upcoming renewals
+1.  **Streamlit Application (`src/gui/streamlit_app.py`):**
+    *   Defines the entire GUI layout and logic.
+    *   Uses Streamlit functions (`st.title`, `st.dataframe`, `st.button`, `st.form`, `st.sidebar`, `st.session_state`, etc.) to build the interface.
+    *   Instantiates and interacts with the `SubscriptionService` to fetch and modify data.
 
 ### 6.3 TUI Components
 

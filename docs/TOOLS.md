@@ -67,23 +67,21 @@ The implementation includes custom JSON encoder/decoder classes (`SubscriptionEn
 
 ## 5. User Interface Technologies
 
-### 5.1 GUI Framework: PyQt6
+### 5.1 GUI Framework: Streamlit
 
-**Version:** 6.7.0
+**Tool:** [Streamlit](https://streamlit.io/)
 
 **Purpose:** Framework for building the graphical user interface.
 
-**Detailed Justification:**
-PyQt6 was selected as the GUI framework after evaluating several alternatives. It provides Python bindings for the Qt framework, a mature and comprehensive toolkit known for creating professional, cross-platform applications. PyQt6 offers a wide range of pre-built widgets, layout management tools, and advanced features like model-view architecture and signals/slots mechanism for event handling.
+**Rationale:**
+Streamlit was selected as the GUI framework after evaluating several alternatives. It provides a rapid development environment for building interactive web-based UIs. Streamlit's simplicity and focus on data visualization and interactive dashboards make it particularly well-suited for the SubTracker application, which involves displaying subscription data, financial metrics, and renewal calendars.
 
-**Comparative Analysis:**
-- **PyQt6 vs. Tkinter:** While Tkinter is included in the Python standard library, it offers a more limited widget set and less modern styling options compared to PyQt6. Installation issues with Tkinter on some systems were also a factor.
-- **PyQt6 vs. wxPython:** wxPython offers native widgets across platforms but has less comprehensive documentation and a smaller community than Qt.
-- **PyQt6 vs. Kivy:** Kivy excels at touch interfaces but is overly complex for a traditional desktop application like SubTracker.
-- **PyQt6 vs. PySide6:** PySide6 offers similar functionality with a more permissive license, but PyQt6 showed better stability in testing with the specific widgets needed.
-- **PyQt6 vs. CustomTkinter:** CustomTkinter improves Tkinter's appearance but lacks the comprehensive feature set and architectural patterns of PyQt6.
-
-PyQt6's bundling of required Qt dependencies ensures consistent behavior across platforms without relying on system-level libraries, which was a significant factor in its selection after experiencing configuration issues with alternative frameworks.
+**Key Decision Factors:**
+- **Rapid Development:** Streamlit allows for creating interactive web applications with minimal boilerplate code
+- **Data-Centric UI:** Excellent support for data tables, charts, and interactive elements
+- **Python-First:** Maintains a pure Python development experience without requiring HTML/CSS/JS
+- **Cross-Platform:** Web-based UI works on all platforms without platform-specific code
+- **Modern Look and Feel:** Provides an attractive, responsive interface with minimal effort
 
 ### 5.2 TUI Framework: Textual
 

@@ -17,9 +17,12 @@ This guide provides comprehensive instructions for using the SubTracker applicat
    - [Calendar View](#calendar-view)
    - [Categories](#categories)
    - [Budget Management](#budget-management)
-5. [Configuration](#configuration)
-6. [Troubleshooting](#troubleshooting)
-7. [Keyboard Shortcuts](#keyboard-shortcuts)
+   - [Notifications](#notifications)
+5. [Billing Cycles](#billing-cycles)
+6. [Subscription Status](#subscription-status)
+7. [Configuration](#configuration)
+8. [Troubleshooting](#troubleshooting)
+9. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ## Getting Started
 
@@ -54,22 +57,34 @@ SubTracker offers two interface options to accommodate different user preference
 
 ### GUI Interface
 
-The Graphical User Interface provides a traditional point-and-click experience with visual elements.
-
-#### GUI Navigation
-
-- **Main Window**: The central hub displaying your subscriptions and summary information.
-- **Menu Bar**: Access to file operations and application exit.
-- **Status Bar**: Shows application status and messages.
+The Graphical User Interface provides a web-based experience powered by Streamlit.
 
 #### GUI Layout
 
-The GUI is organized into two main sections:
+The GUI dashboard is organized into several main sections:
 
-1. **Left Panel**: Subscription list with add, edit, and delete buttons.
-2. **Right Panel**:
-   - **Calendar View**: Visual representation of upcoming renewal dates.
-   - **Financial Summary**: Overview of monthly costs per category, spending forecast, and budget alerts.
+1. **Notifications & Calendar**
+   - Budget alerts for categories exceeding their budget limits
+   - Upcoming renewals within the next 7 days
+   - Calendar view displaying subscription renewal dates
+
+2. **Budget Overview**
+   - Monthly costs per category
+   - Budget setting controls for each category
+   - Visual indicators for budget status
+
+3. **Subscriptions List**
+   - Table view of all subscriptions
+   - Quick status updates through dropdown selectors
+   - Edit and delete actions
+   - Add new subscription button
+
+#### GUI Navigation
+
+- **Subscription Management**: Add, edit, and delete subscriptions from the list view
+- **Status Updates**: Change subscription status directly from the dropdown in the list
+- **Budget Controls**: Set category budgets using the input fields in the Budget Overview section
+- **Calendar View**: Navigate between months and view upcoming renewals
 
 ### TUI Interface
 
@@ -96,16 +111,17 @@ The TUI is organized into two main sections:
 
 #### In GUI
 
-1. Click the "Add" button on the main screen.
+1. Click the "➕ Add New Subscription" button on the main screen.
 2. Fill in the subscription details in the form:
    - **Name**: The service name (required)
    - **Cost**: The amount charged per billing cycle (required)
+   - **Currency**: The currency code (default: USD)
    - **Billing Cycle**: How often you are charged (required)
-   - **Start Date**: When the subscription began (required)
    - **Category**: Type of service (select from dropdown or add new)
+   - **Start Date**: When the subscription began (required)
    - **Status**: Current subscription status
-   - **Additional Fields**: URL, username, notes, etc.
-3. Click "Save" to add the subscription.
+   - **Additional Fields**: URL, username, notes
+3. Click "Add Subscription" to save the new subscription.
 
 #### In TUI
 
@@ -118,10 +134,10 @@ The TUI is organized into two main sections:
 
 #### In GUI
 
-1. Select the subscription you want to edit from the list.
-2. Click the "Edit" button or double-click the subscription item.
+1. Locate the subscription you want to edit in the list.
+2. Click the "✏️" (edit) button in the same row.
 3. Modify the details in the edit form.
-4. Click "Save" to update the subscription.
+4. Click "Update Subscription" to save your changes.
 
 #### In TUI
 
@@ -134,9 +150,9 @@ The TUI is organized into two main sections:
 
 #### In GUI
 
-1. Select the subscription you want to delete.
-2. Click the "Delete" button.
-3. Confirm the deletion in the dialog box.
+1. Locate the subscription you want to delete in the list.
+2. Click the "🗑️" (delete) button in the same row.
+3. Click "✅ Confirm" to confirm deletion or "❌ Cancel" to cancel.
 
 #### In TUI
 
@@ -151,32 +167,17 @@ The TUI is organized into two main sections:
 The financial summary provides an overview of your subscription situation:
 
 - **Monthly Cost per Category**: Breakdown of spending by category.
-- **Spending Forecast**: Upcoming expenses in the next 30 days.
+- **Total Monthly Cost**: Sum of all active subscriptions converted to monthly amounts.
 - **Budget Alerts**: Notifications when you exceed your budget limits.
-
-#### In GUI
-
-The financial summary is displayed in the right panel of the main screen with text displays for each section.
-
-#### In TUI
-
-The financial summary is displayed in the right panel of the main screen with information about monthly costs and upcoming expenses.
 
 ### Calendar View
 
 The calendar view shows upcoming renewal dates for your subscriptions.
 
-#### In GUI
-
-- The calendar is displayed in the right panel of the main screen.
-- Dates with subscription renewals are highlighted.
-- Hover over highlighted dates to see subscription details.
-
-#### In TUI
-
-- The calendar is displayed in the right panel of the main screen.
-- Dates with subscription renewals are highlighted.
-- Select a highlighted date to see subscription details.
+- Subscriptions are displayed on their renewal dates
+- Navigate between months using the calendar controls
+- View day, week, or month layouts
+- Renewal dates are color-coded for visibility
 
 ### Categories
 
@@ -184,7 +185,10 @@ Categories help you organize subscriptions by type and analyze spending patterns
 
 #### Managing Categories
 
-The application comes with default categories (Software, Streaming, Utilities, Other) and allows you to assign categories to subscriptions.
+- The application comes with default categories (Software, Streaming, Utilities, Other)
+- Add new categories when creating or editing a subscription
+- Assign subscriptions to categories to track spending by type
+- Set budget limits per category
 
 ### Budget Management
 
@@ -192,7 +196,41 @@ Set spending limits to monitor and control your subscription costs.
 
 #### Setting Budgets
 
-The application allows you to set global and per-category budget limits, which are used to generate budget alerts in the Financial Summary.
+1. Navigate to the Budget Overview section
+2. Find the category you want to set a budget for
+3. Enter the monthly budget amount in the input field
+4. Budget changes take effect immediately and update alerts
+
+### Notifications
+
+The application provides two types of notifications:
+
+1. **Budget Alerts**: Warnings when a category exceeds its budget limit
+2. **Renewal Notifications**: Information about subscriptions renewing in the next 7 days
+
+## Billing Cycles
+
+SubTracker supports various billing cycles to accommodate different subscription types:
+
+- **Monthly**: Billed once per month (e.g., Netflix, Spotify)
+- **Yearly/Annually**: Billed once per year (e.g., Amazon Prime, domain registrations)
+- **Quarterly**: Billed once every three months
+- **Weekly**: Billed once per week (e.g., certain newspaper subscriptions)
+- **Bi-Annually**: Billed once every two years (e.g., some domain registrations)
+- **Other**: Custom billing cycles not covered by standard options
+
+The application automatically converts all costs to monthly amounts for budget tracking and comparison.
+
+## Subscription Status
+
+Subscriptions can have the following statuses:
+
+- **Active**: Currently active and being charged
+- **Inactive**: Temporarily paused but not cancelled
+- **Cancelled**: Permanently cancelled
+- **Trial**: In a trial period
+
+Active subscriptions are included in budget calculations and renewal notifications.
 
 ## Configuration
 
@@ -214,23 +252,18 @@ SubTracker stores its settings in `config/settings.json`. Key configuration opti
 
 #### Interface Display Problems
 
-- **GUI**: Ensure your system meets the minimum requirements for PyQt6.
+- **GUI**: Ensure your system meets the minimum requirements for Streamlit.
 - **TUI**: Verify your terminal supports colors and has sufficient size.
 
 ### Data Backup
 
-It's recommended to periodically back up your subscription data file (`subscriptions.json` by default).
+It's recommended to periodically back up your subscription data file (`data/subscriptions.json` by default).
 
 ## Keyboard Shortcuts
 
 ### GUI Shortcuts
 
-The GUI primarily uses mouse navigation, but you can use standard keyboard shortcuts:
-
-- **Enter**: Activate the selected button
-- **Tab/Shift+Tab**: Navigate between form fields
-- **Space**: Toggle checkboxes/radio buttons
-- **Alt+F4**: Exit the application
+The GUI primarily uses mouse navigation through the Streamlit interface.
 
 ### TUI Shortcuts
 

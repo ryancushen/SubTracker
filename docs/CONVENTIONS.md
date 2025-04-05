@@ -1,115 +1,118 @@
 # Coding Conventions
 
-This document outlines the coding style and naming conventions to be followed throughout the SubTracker project to ensure consistency and readability.
+This document outlines the coding standards and conventions to be followed when contributing to the SubTracker project.
 
-## 1. Naming Conventions
+## File Naming
 
-*   **Files and Directories:**
-    *   Python files use `snake_case.py` for utility and service files
-    *   Use `PascalCase.py` for classes, especially UI components (e.g., `MainScreen.py`)
-    *   Directories are always lowercase with underscores (e.g., `utils/`, `services/`)
-*   **Python Variables:**
-    *   Use `snake_case` for regular variables and function names (e.g., `user_data`, `get_subscription_details()`).
-*   **Python Functions:**
-    *   Use `snake_case` for function names (e.g., `get_user_data()`).
-    *   Prefix private/helper functions with underscore (e.g., `_load_data()`).
-*   **Python Classes/Components:**
-    *   Use `PascalCase` (e.g., `Subscription`, `MainScreen`).
-*   **Constants:**
-    *   Use `UPPER_SNAKE_CASE` for constants (e.g., `API_BASE_URL`, `DEFAULT_CURRENCY`).
-*   **GUI/TUI Widgets:**
-    *   For PyQt6: Use `PascalCase` for class names, `camelCase` for method names (Qt convention)
-    *   For Textual: Use `PascalCase` for widget classes, `snake_case` for methods
+- Python module files: Use snake_case (lowercase with underscores) for all module filenames (e.g., `subscription_service.py`, `date_utils.py`)
+- Test files: Prefix with `Test` followed by the name of the module being tested (e.g., `TestSubscriptionService.py`)
+- Documentation files: Use UPPER_CASE for documentation files (e.g., `README.md`, `CONVENTIONS.md`)
 
-## 2. Code Formatting
+## Directory Structure
 
-*   **Style Guide:** We adhere to the [PEP 8 -- Style Guide for Python Code](https://peps.python.org/pep-0008/).
-*   **Line Length:** Maximum line length is 88 characters.
-*   **Imports:**
-    *   Group imports in the following order: standard library imports, related third-party imports, local application/library specific imports.
-    *   Separate groups with a blank line.
-    *   Avoid wildcard imports (`from module import *`).
-*   **Indentation:** Use 4 spaces for indentation, not tabs.
-*   **String Quotes:** Use single quotes for short strings, double quotes for docstrings and longer strings.
+- Source code: All application code should be in the `src` directory
+- Tests: All tests should be in the `tests` directory, mirroring the structure of `src`
+- Documentation: All documentation should be in the `docs` directory
+- Configuration: Project-wide configuration files should be in the `config` directory
 
-## 3. Documentation
+## Python Code Style
 
-*   **Docstrings:** All modules, classes, functions, and methods have docstrings explaining their purpose, arguments, and return values. We use Google-style docstrings:
+- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guidelines
+- Maximum line length: 100 characters
+- Use 4 spaces for indentation, not tabs
+- Use docstrings for all modules, classes, and functions
+
+### Import Statements
+
+- Group imports in the following order, with a blank line between each group:
+  1. Standard library imports
+  2. Related third-party imports
+  3. Local application/library-specific imports
+- Prefer absolute imports over relative imports for clarity
 
 ```python
-def function_name(param1, param2):
-    """Short description of function.
+# Standard library imports
+import os
+import json
+from datetime import date
 
-    Longer description if needed.
+# Third-party imports
+import pytest
+from dateutil.relativedelta import relativedelta
+
+# Local application imports
+from src.models.subscription import Subscription
+from src.utils.date_utils import calculate_next_renewal_date
+```
+
+### Docstrings
+
+- Use the Google docstring format for all docstrings
+- Include type annotations in function signatures
+- Document parameters, return values, and exceptions
+
+```python
+def calculate_next_renewal_date(start_date: date, cycle: BillingCycle) -> date:
+    """
+    Calculate the next renewal date from a start date.
 
     Args:
-        param1: Description of first parameter.
-        param2: Description of second parameter.
+        start_date: The initial start date of the subscription
+        cycle: The billing cycle
 
     Returns:
-        Description of return value.
+        The calculated next renewal date
 
     Raises:
-        ExceptionType: When and why this exception is raised.
+        ValueError: If the billing cycle is invalid or cannot be calculated
     """
 ```
 
-*   **Comments:**
-    *   Use inline comments (`#`) to explain complex or non-obvious sections of code
-    *   Keep comments up-to-date with code changes
-    *   Comments should explain "why", not "what" (the code should be clear enough to explain "what")
+## Commenting
 
-## 4. Project Structure Conventions
+- Use comments sparingly and only to explain complex logic or reasoning
+- Do not use comments to explain what the code does (that should be clear from the code itself)
+- Use TODOs with a GitHub issue number for code that needs to be revisited
 
-*   **Module Organization:**
-    *   Place related functionality in the same module or package
-    *   Organize code by feature rather than by type
-    *   Follow the structure outlined in `ARCHITECTURE.md`
-*   **Code Structure:**
-    *   Keep functions and methods focused on a single responsibility
-    *   Limit function/method size to maintain readability
-    *   Extract complex logic into helper functions/methods
+```python
+# TODO(#123): Refactor this method to handle edge cases
+```
 
-## 5. UI Specific Conventions
+## Error Handling
 
-### GUI (PyQt6)
+- Use logging instead of print statements for error reporting
+- Use specific exceptions rather than generic ones
+- Handle exceptions at the appropriate level of abstraction
 
-*   Widget naming:
-    *   Suffix widgets with their type (e.g., `nameLabel`, `saveButton`)
-    *   Consistent naming for actions and slots
-*   Layout:
-    *   Use layouts instead of fixed positioning
-    *   Follow Qt's parent-child relationships consistently
+```python
+try:
+    # Some operation that might fail
+except SpecificException as e:
+    logger.error(f"Specific operation failed: {e}")
+    # Handle or re-raise as appropriate
+```
 
-### TUI (Textual)
+## Testing
 
-*   Component design:
-    *   Custom TUI components inherit from appropriate Textual base classes
-    *   Use Textual's message system for component communication
-*   Styling:
-    *   Use TCSS (Textual CSS) for styling TUI components
-    *   Keep styling separate from logic when possible
+- Write tests for all new features
+- Maintain high test coverage (aim for at least 80%)
+- Use pytest fixtures where appropriate
+- Use descriptive test names that explain what is being tested
 
-## 6. Testing
+```python
+def test_monthly_renewal_date_is_calculated_correctly():
+    # Test implementation
+```
 
-*   Tests are placed in the `/tests` directory, mirroring the structure of the `/src` directory.
-*   Use descriptive names for test files and functions:
-    *   `test_[module_name].py` for test files
-    *   `test_[function_name]_[scenario]` for test functions
-*   Each test should focus on a single functionality or case.
-*   Use fixtures to set up common test data.
+## Version Control
 
-## 7. Error Handling
+- Use clear, descriptive commit messages
+- Prefix commit messages with the type of change (e.g., "fix:", "feat:", "docs:")
+- Reference issue numbers in commit messages when applicable
 
-*   Use specific exception types instead of generic `Exception`
-*   Handle exceptions at appropriate levels
-*   Provide informative error messages
-*   Log errors for debugging while providing user-friendly messages to the UI
+## Miscellaneous
 
-## 8. Version Control
-
-*   Commit messages follow a consistent format:
-    *   Start with a type: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, etc.
-    *   Use present tense, imperative style (e.g., "Add feature" not "Added feature")
-    *   Keep the first line under 50 characters
-    *   Provide details in the commit body if necessary
+- Avoid magic numbers and strings; use constants or configuration values
+- Use type annotations for all function definitions
+- Prefer composition over inheritance
+- Keep functions small and focused on a single responsibility

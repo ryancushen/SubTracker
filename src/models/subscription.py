@@ -14,6 +14,7 @@ Classes:
 """
 
 import uuid
+import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
@@ -60,7 +61,7 @@ class SubscriptionStatus(Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     CANCELLED = "cancelled"
-    TRIAL = "trial"  # Added for clarity, can work with trial_end_date
+    TRIAL = "trial"
 
 
 @dataclass
@@ -94,15 +95,14 @@ class Subscription:
     cost: float
     billing_cycle: BillingCycle
     start_date: date
-    url: Optional[str] = None # New field
-    username: Optional[str] = None # New field
+    url: Optional[str] = None
+    username: Optional[str] = None
     category: str = "Uncategorized"
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
     next_renewal_date: Optional[date] = None
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    currency: str = "USD"  # Default currency
+    currency: str = "USD"
     notes: str = ""
-    # New fields
     trial_end_date: Optional[date] = None
     service_provider: Optional[str] = None
     payment_method: Optional[str] = None
@@ -115,28 +115,24 @@ class Subscription:
         1. Required fields have valid values (name is provided, cost is non-negative)
         2. Status is consistent with trial_end_date (if one is specified, the other should match)
 
-        It may also print warnings if inconsistencies are detected and automatically
-        corrects certain issues to maintain data integrity.
+        It also automatically corrects certain issues to maintain data integrity.
 
         Raises:
             ValueError: If name is empty or cost is negative
         """
-        if not self.name or self.cost is None or self.cost < 0:
-            raise ValueError("Name, cost, or cost is negative.")
-        # Note: Calculation of next_renewal_date might be handled externally
-        # or potentially here if the logic is simple enough and doesn't require
-        # external state/history.
-        # If trial_end_date is set, maybe enforce status=TRIAL?
+        # Validate required fields
+        if not self.name:
+            raise ValueError("Subscription name cannot be empty.")
+        if self.cost is None or self.cost < 0:
+            raise ValueError("Subscription cost cannot be negative.")
+
+        # Enforce consistency between trial_end_date and status
         if self.trial_end_date and self.status != SubscriptionStatus.TRIAL:
-            # Optionally auto-set status or raise warning/error
-            # For now, let's auto-set it for consistency
-            print(f"Warning: Setting status to TRIAL for '{self.name}' as trial_end_date is set.")
+            logging.warning(f"Setting status to TRIAL for '{self.name}' as trial_end_date is set.")
             self.status = SubscriptionStatus.TRIAL
         elif not self.trial_end_date and self.status == SubscriptionStatus.TRIAL:
-            # If status is TRIAL but no end date, maybe set to active or raise warning
-            print(f"Warning: Status is TRIAL for '{self.name}' but no trial_end_date is set. Setting to ACTIVE.")
+            logging.warning(f"Status is TRIAL for '{self.name}' but no trial_end_date is set. Setting to ACTIVE.")
             self.status = SubscriptionStatus.ACTIVE
-        # Calculate initial next_renewal_date if not provided
 
     def is_active(self) -> bool:
         """
@@ -150,3 +146,28 @@ class Subscription:
             bool: True if the subscription status is ACTIVE, False otherwise
         """
         return self.status == SubscriptionStatus.ACTIVE
+
+    def is_trial(self) -> bool:
+        """
+        Check if the subscription is in trial status.
+
+        Returns:
+            bool: True if the subscription status is TRIAL, False otherwise
+        """
+        return self.status == SubscriptionStatus.TRIAL
+
+    def is_trial_ending_soon(self, days_threshold: int = 7) -> bool:
+        """
+        Check if this is a trial subscription ending within the specified number of days.
+
+        Args:
+            days_threshold: Number of days to consider as "ending soon"
+
+        Returns:
+            bool: True if trial is ending within the threshold, False otherwise
+        """
+        if not self.is_trial() or not self.trial_end_date:
+            return False
+
+        days_until_end = (self.trial_end_date - date.today()).days
+        return 0 <= days_until_end <= days_threshold
