@@ -451,4 +451,3 @@ class MainScreen(Screen):
         else:
             # Optionally notify if no renewals on selected date, or do nothing
             self.notify(f"No active renewals found for {selected_date.strftime('%Y-%m-%d')}.", title="Info", severity="information", timeout=5)
-            pass

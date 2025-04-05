@@ -1,6 +1,8 @@
 import pytest
 from datetime import date, timedelta
-from unittest.mock import patch
+import logging
+from decimal import Decimal
+from unittest.mock import patch, MagicMock
 import json
 from collections import defaultdict
 
@@ -119,8 +121,7 @@ class TestFinancialCalculations:
         assert service._normalize_cost_to_period(4.0, BillingCycle.WEEKLY, 'monthly') == pytest.approx(17.33, abs=0.1)
         assert service._normalize_cost_to_period(60.0, BillingCycle.BI_ANNUALLY, 'monthly') == 10.0
 
-        # ONE_TIME and OTHER should return 0 for recurring calculations
-        assert service._normalize_cost_to_period(50.0, BillingCycle.ONE_TIME, 'monthly') == 0.0
+        # OTHER should return 0 for recurring calculations
         assert service._normalize_cost_to_period(50.0, BillingCycle.OTHER, 'monthly') == 0.0
 
     def test_normalize_cost_to_period_annually(self, financial_service):
@@ -134,8 +135,7 @@ class TestFinancialCalculations:
         assert service._normalize_cost_to_period(2.0, BillingCycle.WEEKLY, 'annually') == pytest.approx(104.0, abs=0.1)
         assert service._normalize_cost_to_period(50.0, BillingCycle.BI_ANNUALLY, 'annually') == 100.0
 
-        # ONE_TIME and OTHER should return 0 for recurring calculations
-        assert service._normalize_cost_to_period(50.0, BillingCycle.ONE_TIME, 'annually') == 0.0
+        # OTHER should return 0 for recurring calculations
         assert service._normalize_cost_to_period(50.0, BillingCycle.OTHER, 'annually') == 0.0
 
     def test_normalize_cost_invalid_period(self, financial_service):
@@ -217,54 +217,47 @@ class TestFinancialCalculations:
         assert annual_cost == pytest.approx(503.52)
 
     def test_calculate_spending_forecast(self, financial_service):
-        """Test forecasting spending for a date range."""
+        """Test calculating spending forecast for the next year."""
         service = financial_service
+
+        # Use actual date objects
         today = date.today()
+        end_date = today + timedelta(days=365)  # One year forecast
 
-        # For a 40-day forecast
-        start_date = today
-        end_date = today + timedelta(days=40)
+        # Create test subscriptions
+        subs = [
+            Subscription(name="Monthly Sub", cost=10.0, billing_cycle=BillingCycle.MONTHLY,
+                         status=SubscriptionStatus.ACTIVE, start_date=today - timedelta(days=30)),
+            Subscription(name="Annual Sub", cost=120.0, billing_cycle=BillingCycle.YEARLY,
+                         status=SubscriptionStatus.ACTIVE, start_date=today - timedelta(days=30)),
+            Subscription(name="Quarterly Sub", cost=25.0, billing_cycle=BillingCycle.QUARTERLY,
+                         status=SubscriptionStatus.ACTIVE, start_date=today - timedelta(days=30)),
+            Subscription(name="Canceled Sub", cost=10.0, billing_cycle=BillingCycle.MONTHLY,
+                         status=SubscriptionStatus.CANCELLED, start_date=today - timedelta(days=30)),
+            Subscription(name="Other Sub", cost=50.0, billing_cycle=BillingCycle.OTHER,
+                         status=SubscriptionStatus.ACTIVE, start_date=today - timedelta(days=30))
+        ]
 
-        # Expected renewals in this period:
-        # - Monthly streaming ($15.99): Approx 1-2 renewals
-        # - Annual software ($119.88): 0 renewals (yearly)
-        # - Quarterly magazine ($29.97): Possibly 0-1 renewal depending on timing
-        # - Uncategorized service ($5.99): Approx 1-2 renewals
+        # Monkey patch the service to return our test subscriptions
+        original_get_all = service.get_all_subscriptions
+        service.get_all_subscriptions = lambda: subs
 
-        forecast = service.calculate_spending_forecast(start_date, end_date)
+        try:
+            # Calculate the forecast
+            forecast = service.calculate_spending_forecast(today, end_date)
 
-        # The actual amount will vary based on the current date and renewal schedules
-        # But we can set a reasonable range for the expected cost
-        assert forecast > 0  # There should be some cost
+            # Expected values:
+            # Monthly: ~12 renewals in a year: 10.0 * 12 = 120.0
+            # Annual: 1 renewal in a year: 120.0
+            # Quarterly: ~4 renewals in a year: 25.0 * 4 = 100.0
+            # Canceled: Won't be counted as it's not active
+            # Other: Won't be counted as it's excluded in the method
+            expected = 120.0 + 120.0 + 100.0
 
-        # Compare with manual calculation based on our sample data
-        manual_forecast = 0.0
-        for sub in service.get_all_subscriptions():
-            if sub.status == SubscriptionStatus.ACTIVE and sub.next_renewal_date:
-                renewal_date = sub.next_renewal_date
-                while renewal_date and renewal_date <= end_date:
-                    if renewal_date >= start_date:
-                        manual_forecast += sub.cost
-                    # Calculate next renewal
-                    if sub.billing_cycle == BillingCycle.MONTHLY:
-                        renewal_date = date(
-                            renewal_date.year + ((renewal_date.month + 1) // 12),
-                            ((renewal_date.month + 1) % 12) or 12,
-                            min(renewal_date.day, 28)  # Simplification for month length differences
-                        )
-                    elif sub.billing_cycle == BillingCycle.QUARTERLY:
-                        renewal_date = date(
-                            renewal_date.year + ((renewal_date.month + 3) // 12),
-                            ((renewal_date.month + 3) % 12) or 12,
-                            min(renewal_date.day, 28)
-                        )
-                    else:
-                        # For yearly and other cycles, set to None to exit loop
-                        # (yearly renewals likely won't happen in a 40-day window)
-                        renewal_date = None
-
-        # Allow some tolerance for date/calculation differences
-        assert forecast == pytest.approx(manual_forecast, abs=50.0)
+            assert forecast == pytest.approx(expected, abs=0.1)
+        finally:
+            # Restore the original method
+            service.get_all_subscriptions = original_get_all
 
     def test_forecast_invalid_date_order(self, financial_service):
         """Test that end_date before start_date raises ValueError."""

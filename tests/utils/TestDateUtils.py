@@ -173,7 +173,8 @@ def test_calculate_yearly_renewal():
         expected = past_start.replace(year=today.year)
 
     assert renewal == expected
-    assert renewal > today  # Must be in the future
+    # Must be in the future or today (edge case when test runs exactly on renewal date)
+    assert renewal >= today  # Changed from > to >= to handle edge case where renewal date equals today
 
 
 def test_calculate_quarterly_renewal():

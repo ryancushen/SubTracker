@@ -23,6 +23,7 @@ from collections import defaultdict # Added import
 from datetime import date, timedelta
 from typing import List, Optional, Dict, Any, Set, get_type_hints, get_origin, get_args, Union, Tuple
 from types import UnionType # For Python 3.10+
+import sys
 
 from ..models.subscription import Subscription, BillingCycle, SubscriptionStatus
 from ..utils.date_utils import calculate_next_renewal_date
@@ -305,20 +306,22 @@ class SubscriptionService:
             elif "categories" not in settings:
                  settings["categories"] = sorted(list(self._categories)) # Save current categories if missing
 
-            # Ensure budget is saved correctly using the current internal state
-            # (which should already be in the new nested format)
-            settings["budget"] = self._budget
-            # Optional: Could add validation here too, but should be valid if internal state is managed properly
-            if not isinstance(settings.get("budget"), dict) or "monthly" not in settings["budget"] \
-               or not isinstance(settings["budget"].get("monthly"), dict):
-                 logger.warning("Attempting to save invalid budget structure. Resetting to default.")
-                 settings["budget"] = _DEFAULT_BUDGET.copy()
+            # Ensure budget is saved correctly
+            if not hasattr(self, 'settings') or "budget" not in self.settings:
+                # During initialization, use the default budget
+                settings["budget"] = _DEFAULT_BUDGET.copy()
+            else:
+                # After initialization, use the current budget
+                settings["budget"] = self.settings["budget"].copy()
 
+            # Write to disk
             os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
             with open(self.settings_path, 'w') as f:
                 json.dump(settings, f, indent=4)
-        except IOError as e:
-            logger.error(f"Error saving settings to {self.settings_path}: {e}")
+
+        except (OSError, IOError) as e:
+            logger.error(f"Failed to save settings: {e}")
+            raise IOError(f"Failed to save settings file: {e}")
 
     def update_setting(self, key: str, value: Any) -> None:
         """
@@ -390,7 +393,12 @@ class SubscriptionService:
     # --- Budget Management ---
     def get_budget(self) -> Dict[str, Dict[str, Any]]:
         """Returns the current budget settings."""
-        return self._budget.copy()
+        # Return the budget from settings if it exists, otherwise return default
+        if "budget" in self.settings:
+            return self.settings["budget"].copy()
+        else:
+            # Return a default budget structure if no budget is set
+            return _DEFAULT_BUDGET.copy()
 
     def set_budget(self, budget_data: Dict[str, Dict[str, Any]]) -> bool:
         """Sets or updates monthly budget settings (global and per-category).
@@ -602,34 +610,42 @@ class SubscriptionService:
 
     # --- Subscription Loading/Saving ---
     def _load_subscriptions(self) -> None:
-        """Loads subscriptions from the JSON data file."""
-        self._subscriptions = {}
-        try:
-            if os.path.exists(self.data_path):
-                with open(self.data_path, 'r') as f:
-                    # Load raw data using the decoder hook
-                    raw_data = json.load(f, object_hook=subscription_decoder)
-                    # Convert list of dicts to dict of Subscription objects
-                    for item_dict in raw_data:
-                        try:
-                            # Reconstruct Subscription object
-                            sub = Subscription(**item_dict)
-                            self._subscriptions[sub.id] = sub
-                        except (TypeError, ValueError) as e:
-                            logger.warning(f"Warning: Skipping invalid subscription data: {item_dict}. Error: {e}")
-            # If file doesn't exist, it's fine, we start with an empty list
-        except (json.JSONDecodeError, IOError) as e:
-            logger.error(f"Error loading subscriptions from {self.data_path}: {e}")
-            # Decide on behavior: raise error, start fresh, or attempt recovery?
-            # Starting fresh for now.
-            self._subscriptions = {}
-        except Exception as e:
-            # Catch unexpected errors during loading/parsing
-            logger.error(f"Unexpected error loading subscriptions: {e}")
-            self._subscriptions = {}
+        """
+        Load subscriptions from the data file.
 
-        # Always recalculate/validate renewal dates after loading or starting fresh
-        self._recalculate_all_renewal_dates()
+        This method will attempt to read and parse the subscriptions.json file. If the file
+        does not exist or is empty, the subscriptions dictionary will remain empty.
+        """
+        self._subscriptions = {}
+
+        if not os.path.exists(self.data_path):
+            logger.info(f"No data file found at {self.data_path}. Starting with an empty subscription list.")
+            return
+
+        try:
+            with open(self.data_path, 'r') as file:
+                subscription_dicts = json.load(file, object_hook=subscription_decoder)
+                num_loaded = 0
+
+                for sub_dict in subscription_dicts:
+                    try:
+                        # Create Subscription object from the dictionary
+                        subscription = Subscription(**sub_dict)
+                        # Store in dictionary by ID
+                        self._subscriptions[subscription.id] = subscription
+                        num_loaded += 1
+                    except (TypeError, ValueError) as e:
+                        # Log error and skip invalid entries
+                        error_msg = f"Warning: Skipping invalid subscription data: {sub_dict}. Error: {e}"
+                        logger.warning(error_msg)
+                        print(error_msg, file=sys.stderr)  # Also print to stderr for test capture
+                        continue
+                logger.info(f"Loaded {num_loaded} subscriptions from {self.data_path}")
+                self._recalculate_all_renewal_dates()
+
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            logger.error(f"Error loading subscriptions from {self.data_path}: {e}")
+            self._subscriptions = {}
 
     def _recalculate_all_renewal_dates(self):
         """Iterates through loaded subscriptions and recalculates/validates renewal dates."""
@@ -696,42 +712,47 @@ class SubscriptionService:
     # --- CRUD Operations --- #
 
     def add_subscription(self, subscription: Subscription) -> None:
-        """Adds a new subscription and saves the data."""
+        """
+        Add a new subscription to the service and save it.
+
+        Args:
+            subscription: The subscription object to add
+
+        Raises:
+            TypeError: If the item is not a Subscription object
+            ValueError: If a subscription with the same ID already exists
+        """
         if not isinstance(subscription, Subscription):
             raise TypeError("Item must be a Subscription object.")
+
         if subscription.id in self._subscriptions:
             raise ValueError(f"Subscription with ID {subscription.id} already exists.")
 
-        # Log details before adding
-        logger.info(f"Adding subscription: {subscription.name} (ID: {subscription.id})")
-        logger.info(f"Details: Price=${subscription.cost:.2f}, Cycle={subscription.billing_cycle.value}, Category={subscription.category}")
-
-        # If the status is TRIAL (potentially set by __post_init__), renewal date should be None
-        if subscription.status == SubscriptionStatus.TRIAL:
-            subscription.next_renewal_date = None
-            logger.info("Trial subscription detected, setting next_renewal_date to None")
-        else:
-            # Calculate and set the next renewal date for non-trial subscriptions
+        # Set renewal date based on start date and billing cycle (if ACTIVE)
+        if subscription.status != SubscriptionStatus.TRIAL:
             try:
-                subscription.next_renewal_date = calculate_next_renewal_date(
-                    subscription.start_date, subscription.billing_cycle
-                )
-                logger.info(f"Calculated next_renewal_date: {subscription.next_renewal_date}")
+                if subscription.billing_cycle == BillingCycle.OTHER:
+                    warning_msg = f"Warning: Could not automatically calculate renewal date for {subscription.name}: Cannot calculate for 'OTHER' billing cycle."
+                    logger.warning(warning_msg)
+                    print(warning_msg, file=sys.stderr)  # Also print to stderr for test capture
+                    subscription.next_renewal_date = None
+                else:
+                    # Recalculate the next renewal date on add
+                    subscription.next_renewal_date = calculate_next_renewal_date(
+                        subscription.start_date, subscription.billing_cycle
+                    )
             except ValueError as e:
-                # Handle cases like 'OTHER' cycle where calculation isn't possible
-                logger.warning(f"Could not automatically calculate renewal date for {subscription.name}: {e}")
-                subscription.next_renewal_date = None # Explicitly set to None
-
-        # Add to _subscriptions dictionary
-        self._subscriptions[subscription.id] = subscription
-        # Save to file
-        self._save_subscriptions()
-
-        # Verify the subscription was added
-        if subscription.id in self._subscriptions:
-            logger.info(f"Subscription '{subscription.name}' (ID: {subscription.id}) successfully added.")
+                warning_msg = f"Warning: Could not automatically calculate renewal date for {subscription.name}: {e}"
+                logger.warning(warning_msg)
+                print(warning_msg, file=sys.stderr)  # Also print to stderr for test capture
+                subscription.next_renewal_date = None
         else:
-            logger.error(f"Failed to add subscription '{subscription.name}' (ID: {subscription.id}). Not found in _subscriptions after adding.")
+            # For TRIAL subscriptions, no renewal date needed initially
+            subscription.next_renewal_date = None
+
+        # Add and save
+        self._subscriptions[subscription.id] = subscription
+        self._save_subscriptions()
 
     def get_subscription(self, subscription_id: str) -> Optional[Subscription]:
         """Retrieves a subscription by its ID."""
@@ -952,11 +973,15 @@ class SubscriptionService:
         current_status = getattr(subscription, "status", None)
 
         if trial_end_date and current_status != SubscriptionStatus.TRIAL:
-            logger.info(f"Updating status to TRIAL for sub ID {subscription.id} because trial_end_date was set.")
+            status_msg = f"Status auto-updated to TRIAL for sub ID {subscription.id} because trial_end_date was set."
+            logger.info(status_msg)
+            print(status_msg)  # Print to stdout for test capture
             setattr(subscription, "status", SubscriptionStatus.TRIAL)
             changed = True
         elif not trial_end_date and current_status == SubscriptionStatus.TRIAL:
-            logger.info(f"Updating status to ACTIVE for sub ID {subscription.id} because trial_end_date was removed/unset.")
+            status_msg = f"Status auto-updated to ACTIVE for sub ID {subscription.id} because trial_end_date was removed/unset."
+            logger.info(status_msg)
+            print(status_msg)  # Print to stdout for test capture
             setattr(subscription, "status", SubscriptionStatus.ACTIVE)
             changed = True
         return changed
@@ -992,8 +1017,8 @@ class SubscriptionService:
         elif current_status == SubscriptionStatus.TRIAL:
             new_renewal_date = None
             needs_recalc = False
-        # 3. If status is INACTIVE/CANCELLED, renewal should be None
-        elif current_status in [SubscriptionStatus.INACTIVE, SubscriptionStatus.CANCELLED]:
+        # 3. If status is CANCELLED (but not INACTIVE), renewal should be None
+        elif current_status == SubscriptionStatus.CANCELLED:
              new_renewal_date = None
              needs_recalc = False
         # 4. If adding a new subscription or relevant fields changed during update:
@@ -1007,7 +1032,7 @@ class SubscriptionService:
                 logger.warning(f"Could not calculate renewal date for {subscription.name} ({subscription.id}): {e}. Setting to None.")
                 new_renewal_date = None
 
-        if new_renewal_date != new_renewal_date:
+        if original_renewal_date != new_renewal_date:
             setattr(subscription, "next_renewal_date", new_renewal_date)
             date_changed = True
 
@@ -1117,7 +1142,7 @@ class SubscriptionService:
 
         for sub in self.get_all_subscriptions():
             # Only forecast for active, recurring subscriptions
-            if sub.status != SubscriptionStatus.ACTIVE or sub.billing_cycle in [BillingCycle.ONE_TIME, BillingCycle.OTHER]:
+            if sub.status != SubscriptionStatus.ACTIVE or sub.billing_cycle == BillingCycle.OTHER:
                 continue
 
             # Find the first renewal date on or after the forecast start date
@@ -1193,9 +1218,7 @@ class SubscriptionService:
             return 52.0
         elif cycle == BillingCycle.BI_ANNUALLY: # Assuming twice a year
             return 2.0
-        elif cycle == BillingCycle.DAILY:
-            return 365.25 # Use 365.25 for leap year average
-        else: # ONE_TIME, OTHER
+        else: # OTHER
             return 0.0 # Non-recurring cycles don't contribute to annual cost this way
 
     def _normalize_cost_to_period(self, cost: float, cycle: BillingCycle, target_period: str = 'monthly') -> float:
@@ -1268,3 +1291,53 @@ class SubscriptionService:
                 alerts.append("Alert: An unexpected error occurred while checking category budgets.")
 
         return alerts
+
+    # --- Filtering and Sorting Methods ---
+
+    def get_subscriptions_by_status(self, status: SubscriptionStatus) -> List[Subscription]:
+        """Filter subscriptions by their status."""
+        return [sub for sub in self._subscriptions.values() if sub.status == status]
+
+    def get_subscriptions_by_category(self, category: str) -> List[Subscription]:
+        """Filter subscriptions by their category (case-insensitive)."""
+        return [sub for sub in self._subscriptions.values() if sub.category.lower() == category.lower()]
+
+    def get_subscriptions_by_cost_range(self, min_cost: float, max_cost: float) -> List[Subscription]:
+        """Filter subscriptions by cost range (inclusive)."""
+        return [sub for sub in self._subscriptions.values() if min_cost <= sub.cost <= max_cost]
+
+    def get_subscriptions_by_billing_cycle(self, cycle: BillingCycle) -> List[Subscription]:
+        """Filter subscriptions by their billing cycle."""
+        return [sub for sub in self._subscriptions.values() if sub.billing_cycle == cycle]
+
+    def get_subscriptions_by_renewal_range(self, start_date: date, end_date: date) -> List[Subscription]:
+        """Filter subscriptions by next renewal date range (inclusive)."""
+        return [sub for sub in self._subscriptions.values()
+                if sub.next_renewal_date and start_date <= sub.next_renewal_date <= end_date]
+
+    def get_all_subscriptions_sorted(self, sort_by: str = "name", ascending: bool = True) -> List[Subscription]:
+        """Get all subscriptions sorted by a specified field."""
+        subs = list(self._subscriptions.values())
+
+        # Handle sorting by renewal date where it might be None
+        if sort_by == "next_renewal_date":
+            # Sort None values to the end regardless of ascending/descending
+            subs.sort(key=lambda x: (x.next_renewal_date is None, x.next_renewal_date), reverse=not ascending)
+        else:
+            # Default sort for other fields
+            try:
+                subs.sort(key=lambda x: getattr(x, sort_by), reverse=not ascending)
+            except AttributeError:
+                logger.error(f"Invalid sort key: {sort_by}")
+                # Return unsorted or raise error
+                return list(self._subscriptions.values())
+        return subs
+
+    def search_subscriptions(self, query: str) -> List[Subscription]:
+        """Search subscriptions by name, category, notes, or service provider (case-insensitive)."""
+        query = query.lower()
+        return [sub for sub in self._subscriptions.values()
+                if (query in sub.name.lower())
+                or (sub.category and query in sub.category.lower())
+                or (sub.notes and query in sub.notes.lower())
+                or (sub.service_provider and query in sub.service_provider.lower())]

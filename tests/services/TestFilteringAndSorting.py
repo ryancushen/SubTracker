@@ -108,6 +108,11 @@ class TestFilteringAndSorting:
             )
         ]
 
+        # Add categories used in test data explicitly
+        test_categories = {sub.category for sub in subs if sub.category}
+        for category in test_categories:
+            service.add_category(category)
+
         # Add subscriptions to service (bypassing save for speed)
         service._subscriptions = {sub.id: sub for sub in subs}
 
