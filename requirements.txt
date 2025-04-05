@@ -1,0 +1,30 @@
+# === Testing Framework ===
+pytest==8.3.5             # Testing framework for writing and running unit tests
+iniconfig==2.1.0          # Parsing ini-style configuration files, used by pytest
+pluggy==1.5.0             # Plugin framework used by pytest for extension support
+
+# === Core Utilities ===
+packaging==24.2           # Core utilities for Python packaging, used by pytest and other packages
+platformdirs==4.3.7       # For determining platform-specific directories, used by various packages
+six==1.17.0               # Python 2/3 compatibility library, required by python-dateutil
+
+# === Date and Time Handling ===
+python-dateutil==2.9.0.post0  # Extensions to the standard datetime module for handling complex date operations
+
+# === GUI Framework ===
+PyQt6==6.7.0              # Python bindings for the Qt6 framework, used for the graphical user interface
+PyQt6-Qt6==6.7.3          # Qt6 libraries bundled with PyQt6
+PyQt6_sip==13.10.0        # SIP module for PyQt6, handles C++/Python communication
+
+# === TUI Framework ===
+textual==3.0.1            # Modern TUI (Text User Interface) framework for terminal applications
+rich==14.0.0              # Terminal formatting library, used by Textual for enhanced text display
+Pygments==2.19.1          # Syntax highlighting library, used by Rich and Textual
+
+# === TUI Dependencies ===
+typing_extensions==4.13.1  # Backported typing hints, used by Textual and Rich
+markdown-it-py==3.0.0     # Python port of markdown-it, used by Textual for markdown rendering
+mdit-py-plugins==0.4.2    # Plugins for markdown-it-py, enhances markdown capabilities in Textual
+linkify-it-py==2.0.3      # Library for finding links in plain text, used by Textual for link handling
+mdurl==0.1.2              # URL utilities for markdown-it, used by Textual
+uc-micro-py==1.0.3        # Micro subset of Unicode data files for linkify-it-py

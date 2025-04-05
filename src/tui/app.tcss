@@ -1,0 +1,100 @@
+/* src/tui/app.tcss */
+Screen {
+    background: $panel;
+    /* Allow child containers to take up space */
+    layout: vertical;
+}
+
+/* Style the main screen itself if needed */
+MainScreen {
+    /* Example: Add padding around the whole screen content */
+    /* padding: 1; */
+}
+
+/* Layout for the horizontal split */
+#main-split {
+    layout: horizontal;
+    /* Example: Define relative widths (adjust as needed) */
+    /* grid-size: 2; */
+    /* grid-gutter: 1 2; */
+}
+
+/* Style the left and right panes */
+#left-pane {
+    width: 2fr; /* Give left pane 2/3rds of space */
+    border-right: thick $accent;
+    padding: 0 1; /* Padding inside the pane */
+    layout: vertical; /* Ensure vertical layout */
+}
+
+#right-pane {
+    width: 1fr; /* Give right pane 1/3rd of space */
+    padding: 0 1;
+    layout: vertical; /* Ensure vertical layout */
+}
+
+/* Style the title above the list */
+#sub-list-title {
+    text-style: bold;
+    margin-bottom: 1;
+    width: 100%; /* Take full width */
+    text-align: center;
+}
+
+/* Container for the subscription list */
+#sub-list-container {
+    border: round $accent;
+    height: 1fr; /* Make it expand vertically */
+    /* Add padding if needed */
+    /* padding: 1; */
+}
+
+/* Style the button bar */
+#button-bar {
+    margin-top: 1;
+    height: auto; /* Size based on content */
+    align: center middle; /* Center buttons horizontally */
+}
+
+#button-bar Button {
+    margin: 0 1; /* Add space between buttons */
+}
+
+/* Style placeholders */
+Placeholder {
+    text-style: bold;
+    color: $text-muted;
+    width: 100%;
+    height: 100%; /* Fill container */
+    content-align: center middle;
+}
+
+Header {
+    background: $primary;
+    color: $text;
+    dock: top; /* Dock header to the top */
+}
+
+Footer {
+    background: $primary-background;
+    dock: bottom; /* Dock footer to the bottom */
+}
+
+/* Style the calendar title */
+#calendar-title {
+    text-style: bold;
+    width: 100%;
+    text-align: center;
+    /* margin-bottom: 1;  Keep or remove as needed, custom widget might have padding */
+}
+
+/* Style the Calendar widget itself (optional) */
+/*
+Calendar {
+    border: round $accent;
+    height: 15;
+}
+*/
+
+/* Financial Summary styling is now within its own component's CSS */
+/* Custom Calendar styling is within its own component's CSS */
